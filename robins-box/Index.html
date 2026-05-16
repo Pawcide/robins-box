@@ -1,0 +1,484 @@
+<h1 class="main-title">Robin's Box</h1>
+
+<style>
+/* --- Custom Font Declarations --- */
+@font-face {
+  font-family: 'Velmora Signature';
+  src: url('Velmora Signature.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Alexis Marie';
+  src: url('Alexis Marie.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+/* --- Core Layout Styling --- */
+.scene{display:flex;flex-direction:column;align-items:center;min-height:720px;gap:10px;padding:2rem;overflow:hidden;position:relative;}
+
+/* Robin's Box Main Title Styling */
+.main-title {
+  font-family: 'Velmora Signature', cursive, sans-serif;
+  font-size: 80px;
+  color: #9A4E68;
+  margin: 0;
+  text-align: center;
+  z-index: 10;
+}
+
+/* Sub-hint for instructions */
+.hint{
+  font-size: 20px;
+  color: #A8728A;
+  font-family: 'Alexis Marie', sans-serif;
+  min-height: 30px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.col{display:flex;flex-direction:column;align-items:center;gap:24px;transition:transform 0.52s cubic-bezier(0.4,0,0.2,1),opacity 0.42s ease;will-change:transform;}
+
+.gift-region{position:relative;width:192px;height:384px;flex-shrink:0;}
+.gift-wrap{position:absolute;inset:0;}
+
+.spr{position:absolute;width:192px;height:192px;image-rendering:pixelated;
+  display:flex;align-items:center;justify-content:center;box-sizing:border-box;
+  background-size: contain;background-repeat: no-repeat;background-position: center;}
+
+.lid{top:192px;left:0;z-index:4;cursor:pointer;
+  background-image: url('GiftLid.png');
+  transition:transform 1.8s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.22s ease-in;}
+  
+.box-back{top:192px;left:0;z-index:1;
+  background-image: url('GiftBack.png');}
+  
+.box-front{top:192px;left:0;z-index:3;
+  background-image: url('GiftFront.png');}
+
+.paper{position:absolute;top:192px;left:0;width:192px;height:192px;z-index:2;
+  image-rendering:pixelated;display:flex;align-items:center;justify-content:center;
+  background-image: url('RandomPaper.png');background-size: contain;background-repeat: no-repeat;background-position: center;
+  cursor:pointer;opacity:0;pointer-events:none;
+  transform: scale(0.2);
+  transition:transform 0.65s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.38s ease;}
+
+.paper.vis{opacity:1;pointer-events:auto;transform: translateY(-138px) scale(1);}
+
+/* Confetti Particle Styling (Strict Rigid W:2 H:1 Ratio) */
+.confetti {
+  position: absolute;
+  top: 260px; 
+  left: 88px; 
+  width: 16px; 
+  height: 8px; 
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Star Particle Styling (1:1 Ratio, Rendered Larger) */
+.star {
+  position: absolute;
+  top: 260px;
+  left: 84px; 
+  width: 24px; 
+  height: 24px; 
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Horizontal Layout for the 5 Spawned Papers */
+.papers-row {
+  display: none;
+  position: absolute;
+  top: 54px; 
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  z-index: 6;
+  white-space: nowrap;
+}
+
+.spawned-paper {
+  width: 192px;  
+  height: 192px; 
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: pointer;
+  image-rendering: pixelated;
+  will-change: transform, opacity;
+}
+
+/* Subtle nervous jitter */
+.spawned-paper:hover:not(.expanded) {
+  animation: nervousShake 0.15s infinite alternate ease-in-out;
+}
+
+@keyframes nervousShake {
+  0% { transform: translate(0.5px, 0.5px) rotate(0.4deg); }
+  50% { transform: translate(-0.5px, -0.5px) rotate(-0.4deg); }
+  100% { transform: translate(0.5px, -0.5px) rotate(0.2deg); }
+}
+
+/* Expanded selection state */
+.spawned-paper.expanded {
+  transform: scale(1.15) !important; 
+  filter: drop-shadow(0px 6px 12px rgba(0,0,0,0.2));
+  z-index: 10;
+}
+
+.msg-card{display:none;width:340px;background:var(--color-background-primary);
+  border:2px solid #F0BDD0;border-radius:12px;padding:22px 18px;text-align:center;
+  font-size:18px;line-height:1.6;color:#9A4E68;font-family: 'Alexis Marie', sans-serif;
+  opacity:0;transform:translateY(10px) scale(0.95);
+  transition:opacity 0.4s ease, transform 0.4s cubic-bezier(0.34,1.4,0.64,1);
+  word-wrap: break-word;}
+.msg-card.vis{opacity:1;transform:none;}
+
+/* Rarity Badge Title (Bigger) */
+.rarity-badge {
+  font-size: 38px;
+  margin-bottom: 12px;
+  font-family: 'Velmora Signature', cursive, sans-serif;
+}
+
+.reset{display:none;font-size:16px;font-family: 'Alexis Marie', sans-serif;
+  color:var(--color-text-secondary);background:none;
+  border:1px solid var(--color-border-secondary);border-radius:8px;
+  padding:10px 24px;cursor:pointer;opacity:0;transition:opacity 0.3s; margin-top: 20px;}
+.reset:hover{background:var(--color-background-secondary);}
+.reset.vis{opacity:1;}
+</style>
+
+<div class="scene">
+  <div class="col" id="col">
+    <p class="hint" id="hint">click the gift to open it</p>
+    
+    <div class="gift-region">
+      <div class="gift-wrap">
+        <div class="spr lid"       id="lid"   onclick="openLid()"  ></div>
+        <div class="spr box-back"                                   ></div>
+        <div class="spr box-front"                                  ></div>
+      </div>
+      <div class="paper" id="paper" onclick="openPaper()"></div>
+      
+      <div class="papers-row" id="papersRow"></div>
+    </div>
+
+    <div class="msg-card" id="msgCard">
+      <div class="rarity-badge" id="rarityLabel"></div>
+      <span id="msgText"></span>
+    </div>
+    
+    <button class="reset"   id="resetBtn" onclick="resetGift()">open again</button>
+  </div>
+</div>
+
+<script>
+const rarityData = {
+  "One of a kind": {
+    color: "#ff007f", 
+    image: "RandomPaperOneOfAKind.png",
+    messages: [
+      "Love isn't grand decorations or poetry, love letters, flowers or loving websites, but the quiet thought that I will come home to my mommy. You have become my mommy, and I am forever grateful for that. Even though now we are most definitely together, you didn't arrive with a bang. It was a quiet and progressive obsession where both of us fell for eachother. In a world where sometimes feelings aren't mutual, you shine the light of progress. You make me feel more myself somehow, and you're the person who I always want to be surrounded by. If love isn't what we have, then everything else losses what makes something special, as you're so important to me that I need you more than I need myself. I don't need food or water if someone gave me a choice to keep one aspect of the universe the same. I'd choose you as my mommy for ever, and I would never for any circumstances switch the play and not feel special when I am with you, I love you so much my mommy, and I want you to know that you're worth every minute spend making this project, I adore you mwah meow"
+    ]
+  },
+  "Exotic": {
+    color: "#00f0ff", 
+    image: "RandomPaperExotic.png",
+    messages: [
+      "As today's mornings hours cast sunlight on my eyes waking me up, I think about tomorrow's grace and how important it must be. To connect so deeply with you, is to have a privilege so vast and unique that I feel in awe that I am allowed to have it. As the morning passes and becomes afternoon, I see the full brightness of the sun as your radiance of peace that you emit when we're alone. Then the sky turns yellow, and I see the sun start to set, and I can't help but wonder what we would be doing if it wasn't calling. When the night finally hits and I press the button to hang up, my thoughts fly and take shape... and its clear, I need to call you again. There's nothing that brings me the enjoyment compared to being within your company. To be loved by you must mean that I have been choosen by a god to have such an outstanding and fierce partner such as you, because there simply isn't a rational explanation on why I should trust anything rational when I can spend eternity alongside you.",
+      "A persistent Feeling emerges every friday morning. The feeling that I get to spend just slightly longer with you than any other previous couple of days. The simple action of acknowledgement of such thing makes me feel loved without any action performed by you. A full interaction with the aecane would prove irrational that I am exaggerating. Every single second of my day, involves you. From waking up and hoping you're able to text right away, to those calming moments when we're fully connected and happy. Life is a box where all my dreams and aspirations are, and I am the ribbon and lid that encloses that. You are the true gift of my life, you convert the ribbon I am into a true robin. You make me feel like I belong, and If I was only ever nothing but the sum of my parts, you made each of mine special, and I love you so much for that."
+    ]
+  },
+  "Legendary": {
+    color: "#ffaa00", 
+    image: "RandomPaperLegendary.png",
+    messages: [
+      "Until I have the chance to experience the supernatural, I have experience the divine with you. A work of art incomparable to anything I've ever seen has landed in my life without warning,band that art, is you. With your unmatched personality and your caring love for me, I truly feel like I belong to any place you could ever host me at. A true feeling grater than euphoria always reaches my mind everytime you take me in your arms. I love you my mommy, mwah",
+      "Caring, sweet, independent, and all of your qualities, you have everything that describes the person who I wanted to be with. I don't care if sometimes we ever fight about something, because I know it comes from the same place as ever, which is love. Most days I drift into blur thinking about what can be, and most days what can be morphs into a daydream where you hold me tight and tell me how much you love me in detail. I love you so much my mommy, mwah",
+      "I can't ever forget when you held me in your arms and waited for me to fall asleep. While dreaming I remember hearing your voice, and the thought that I was in your arms was enough to wake me up so I could be awake to experience more time with you. As I woke up I saw you looking at me with such a caring and warm stare, I couldn't help but feel shy and so cared for that I almost instantly fell asleep again :3",
+      "After years worth of time as long distance, the thought of being together is increasingly harder but feels more rewarding than ever before. I count the days every single morning, I check how long has passed and every single day I feel grateful that the clock ticks a little closer to the day I finally see you. Your courage, strength and determination is what fills me with joy every day, your bravery keeps me in check on how tough challenges are, and without someone who's as important as you are to me, I don't know how anyone could be happier than I am."
+    ]
+  },
+  "Epic": {
+    color: "#a020f0", 
+    image: "RandomPaperEpic.png",
+    messages: [
+      "Most days aren't as fun from the start, but whenever you're back from whatever you're doing, it's much calmer and fun than any other day :3",
+      "You were so shy when we started dating that you literally infected me with it and now I'm more shy than ever. I loved you a lot, and even more now :3",
+      "There are like 4 billion girls out there, but there's only one mommy that is as good, kind, creative, cool and awesome as you :3c",
+      "If I was ever exiled from the planet or something crazy like that, I'd do literally anything to comeback and hug you even if it's once :3",
+      "My hands always feel so heavy without you, I need a strong girl like you to hold them so I can rest and let go. I love you so so much :3",
+      "The love I have for you cannot be understood, as it is simply too much to grasp and too large to comprehend. I love you mommy :3c",
+      "If there's anything I am truly uncertain of is how much I love you, it's forever growing and I always love you more than I think. kissy for you :3"
+    ]
+  },
+  "Rare": {
+    color: "#0066ff", 
+    image: "RandomPaperRare.png",
+    messages: [
+      "Hi my mommy! you're such a lovey and amazing girl, I love you so so much :3",
+      "Hi you :3 I want you to know that you're the best thing that has ever happened to me ever :3",
+      "WHOA... a rare card? that awesome! I love you so much, good job!! mwah mwaahhh mrowp :3",
+      "Heeyy awesome mommy! you're my favorite person, and my favorite part of the day :3",
+      "I wish I could spend more time with you even though we spend all day together 3:",
+      "It's worth the wait to be long distance because I know you'll always take care of me :3",
+      "Long distance is hard, but I always know that you're there for me at the end of the day :3",
+      "I love you so much, so so SOOO much, please kiss me a lot a lot and hug me mrowp :3",
+      "The concept of long distance is sometimes irrelevant when I know I'll be with you at its end :3",
+      "Rare as a diamond, awesome as is, you're the awesomest ever and you'll always be :3"
+    ]
+  },
+  "Uncommon": {
+    color: "#22c55e", 
+    image: "RandomPaperUncommon.png",
+    messages: [
+      "Hewwo mommy!", "I love you mwuah", "I love you so so much", "I love my mommy (you)",
+      "I'm so lucky to be with you :3", "you are IRREPLACEABLE", "you are genuinely special",
+      "I love you mwrooowpppp :3c", "hi mommy, uncommon find I guess :3", "Kissy for you!",
+      "You are so kind to me :3", "My pretty mommy keeps getting uncommon 3:", "You are THE best wife ever ever :3c",
+      "MWAH kissy kissy and more kisses for you", "I loveeee you so so SO much", "I'm so grateful to have you 3:",
+      "You're my hero :3c", "You are my favorite part of my day :3", "My heart is always warmer around you :3",
+      "My pretty mommy always to the rescue :3", "I need you as I need water ;3", "Such a beautiful day to be with you :3",
+      "My mommy is always so kind :3", "You won the award for best mommy!", "I love you more than anything ever :3",
+      "My pretty mommy is... YOUU :3c", "I think I won life with a mommy like you :3"
+    ]
+  },
+  "Common": {
+    color: "#9A4E68", 
+    image: "RandomPaper.png", 
+    messages: [
+      "heyyy!", "hi... meow", "hewwo...", "meow", "mrowpp", 
+      "Meoww meooww", "mrowpp!", "hmmm!", "h-h-hewwo!", "mommy!"
+    ]
+  }
+};
+
+let state = 'closed';
+let preRolledPapers = []; 
+
+function shootConfetti(hasLegendaryUp) {
+  const region = document.querySelector('.gift-region');
+  const colors = ['ConfettiRed.png', 'ConfettiGreen.png', 'ConfettiBlue.png', 'ConfettiYellow.png'];
+  
+  const regularCount = 45;
+  for (let i = 0; i < regularCount; i++) {
+    createParticle(region, colors[Math.floor(Math.random() * colors.length)], 'confetti');
+  }
+
+  if (hasLegendaryUp) {
+    const starCount = 60; 
+    for (let i = 0; i < starCount; i++) {
+      createParticle(region, 'Star.png', 'star');
+    }
+  }
+}
+
+function createParticle(parentRegion, spriteName, className) {
+  const p = document.createElement('div');
+  p.className = className;
+  p.style.backgroundImage = `url('${spriteName}')`;
+  parentRegion.appendChild(p);
+
+  const duration = 1.6 + Math.random() * 0.7; 
+  const fps = 30; 
+  const totalFrames = Math.floor(duration * fps);
+  
+  const vx = (Math.random() - 0.5) * 360; 
+  const vy = -(Math.random() * 300 + 320); 
+  const gravity = 850; 
+  const rotSpeed = (Math.random() - 0.5) * 550; 
+
+  const keyframes = [];
+  for (let f = 0; f <= totalFrames; f++) {
+    const t = f / fps;
+    const dx = vx * t;
+    const dy = (vy * t) + (0.5 * gravity * t * t);
+    const rZ = rotSpeed * t;
+    const opacityFade = t > (duration - 0.4) ? 1 - ((t - (duration - 0.4)) * 2.5) : 1;
+
+    keyframes.push({
+      transform: `translate(${dx}px, ${dy}px) rotate(${rZ}deg)`,
+      opacity: Math.max(0, opacityFade)
+    });
+  }
+
+  p.animate(keyframes, {
+    duration: duration * 1000,
+    easing: 'linear',
+    fill: 'forwards'
+  });
+
+  setTimeout(() => p.remove(), duration * 1000);
+}
+
+function openLid() {
+  if (state !== 'closed') return;
+  state = 'open';
+  const lid = document.getElementById('lid');
+  
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const randomAngle = direction * (15 + Math.random() * 20);
+  
+  lid.style.transform = `translateY(800px) rotate(${randomAngle}deg)`;
+  
+  preRolledPapers = [];
+  let hasLegendaryUp = false;
+
+  for (let i = 0; i < 5; i++) {
+    const roll = Math.random() * 100;
+    let tier = "Common";
+    
+    if (roll < 0.0001) tier = "One of a kind";
+    else if (roll < 0.0101) tier = "Exotic";
+    else if (roll < 1.0101) tier = "Legendary";
+    else if (roll < 6.0101) tier = "Epic";
+    else if (roll < 21.0101) tier = "Rare";
+    else if (roll < 61.0101) tier = "Uncommon";
+    else tier = "Common";
+
+    if (tier === "Legendary" || tier === "Exotic" || tier === "One of a kind") {
+      hasLegendaryUp = true;
+    }
+
+    const pool = rarityData[tier].messages;
+    const chosenMessage = pool[Math.floor(Math.random() * pool.length)];
+    
+    preRolledPapers.push({ tier: tier, message: chosenMessage });
+  }
+
+  shootConfetti(hasLegendaryUp); 
+  
+  setTimeout(() => {
+    document.getElementById('paper').classList.add('vis');
+    document.getElementById('hint').textContent = 'now click the paper!';
+  }, 200);
+}
+
+function openPaper() {
+  if (state !== 'open') return;
+  state = 'read';
+  
+  const paper = document.getElementById('paper');
+  paper.style.transform = 'scale(0)';
+  paper.style.opacity = '0';
+  paper.style.pointerEvents = 'none';
+
+  const papersRow = document.getElementById('papersRow');
+  papersRow.innerHTML = ''; 
+  papersRow.style.display = 'flex';
+
+  const paperWidth = 192;
+  const gapSize = 16;
+  const spawnedPapers = [];
+
+  for (let i = 0; i < 5; i++) {
+    const rolledItem = preRolledPapers[i];
+    const tier = rolledItem.tier;
+
+    const pEl = document.createElement('div');
+    pEl.className = 'spawned-paper';
+    pEl.style.backgroundImage = `url('${rarityData[tier].image}')`;
+    
+    const finalOffsetFromCenter = (i - 2) * (paperWidth + gapSize);
+    pEl.style.transform = `translateX(${-finalOffsetFromCenter}px) scale(0.2)`;
+    pEl.style.opacity = '0';
+    pEl.style.transition = 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease';
+    
+    pEl.dataset.savedMessage = rolledItem.message; 
+    pEl.dataset.savedTier = tier; 
+
+    pEl.onclick = function() {
+      if (pEl.classList.contains('expanded')) return;
+
+      document.querySelectorAll('.spawned-paper').forEach(el => el.classList.remove('expanded'));
+      pEl.classList.add('expanded');
+
+      const tierName = pEl.dataset.savedTier;
+      
+      const label = document.getElementById('rarityLabel'); 
+      label.textContent = `• ${tierName} •`;
+      label.style.color = rarityData[tierName].color;
+      document.getElementById('msgText').textContent = pEl.dataset.savedMessage;
+
+      const card = document.getElementById('msgCard');
+      card.style.display = 'block';
+      requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('vis')));
+    };
+
+    papersRow.appendChild(pEl);
+    spawnedPapers.push(pEl);
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      spawnedPapers.forEach(p => {
+        p.style.transform = 'translateX(0) scale(1)';
+        p.style.opacity = '1';
+      });
+    });
+  });
+
+  document.getElementById('hint').textContent = 'pick a paper to read its secrets!';
+  
+  const btn = document.getElementById('resetBtn');
+  btn.style.display = 'inline-block';
+  setTimeout(() => btn.classList.add('vis'), 50);
+}
+
+function resetGift() {
+  const col = document.getElementById('col');
+  col.style.transform = 'translateX(-620px)';
+  col.style.opacity = '0';
+
+  setTimeout(() => {
+    col.style.transition = 'none';
+    col.style.transform = 'translateX(620px)';
+    col.style.opacity = '0';
+    state = 'closed';
+    preRolledPapers = [];
+
+    const lid = document.getElementById('lid');
+    lid.style.transform = '';
+
+    const paper = document.getElementById('paper');
+    paper.style.transform = '';
+    paper.style.opacity = '';
+    paper.style.pointerEvents = ''; 
+    paper.classList.remove('vis');
+
+    const papersRow = document.getElementById('papersRow');
+    papersRow.style.display = 'none';
+    papersRow.innerHTML = '';
+
+    const card = document.getElementById('msgCard');
+    card.classList.remove('vis');
+    card.style.display = 'none';
+
+    const btn = document.getElementById('resetBtn');
+    btn.classList.remove('vis');
+    btn.style.display = 'none';
+
+    document.getElementById('hint').textContent = 'click the gift to open it';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      col.style.transition = '';
+      col.style.opacity = '1';
+      col.style.transform = '';
+    }));
+  }, 540);
+}
+</script>
