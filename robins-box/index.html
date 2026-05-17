@@ -67,7 +67,7 @@
 
 .paper.vis{opacity:1;pointer-events:auto;transform: translateY(-138px) scale(1);}
 
-/* Confetti Particle Styling (Strict Rigid W:2 H:1 Ratio) */
+/* Confetti Particle Styling */
 .confetti {
   position: absolute;
   top: 260px; 
@@ -81,7 +81,7 @@
   z-index: 5;
 }
 
-/* Star Particle Styling (1:1 Ratio, Rendered Larger) */
+/* Star Particle Styling */
 .star {
   position: absolute;
   top: 260px;
@@ -139,7 +139,7 @@
   z-index: 10;
 }
 
-.msg-card{display:none;width:340px;background:var(--color-background-primary);
+.msg-card{display:none;width:340px;background:var(--color-background-primary, #ffffff);
   border:2px solid #F0BDD0;border-radius:12px;padding:22px 18px;text-align:center;
   font-size:18px;line-height:1.6;color:#9A4E68;font-family: 'Alexis Marie', sans-serif;
   opacity:0;transform:translateY(10px) scale(0.95);
@@ -147,7 +147,7 @@
   word-wrap: break-word;}
 .msg-card.vis{opacity:1;transform:none;}
 
-/* Rarity Badge Title (Bigger) */
+/* Rarity Badge Title */
 .rarity-badge {
   font-size: 38px;
   margin-bottom: 12px;
@@ -155,11 +155,38 @@
 }
 
 .reset{display:none;font-size:16px;font-family: 'Alexis Marie', sans-serif;
-  color:var(--color-text-secondary);background:none;
-  border:1px solid var(--color-border-secondary);border-radius:8px;
-  padding:10px 24px;cursor:pointer;opacity:0;transition:opacity 0.3s; margin-top: 20px;}
-.reset:hover{background:var(--color-background-secondary);}
+  color:#9A4E68;background:none;
+  border:1px solid #F0BDD0;border-radius:8px;
+  padding:10px 24px;cursor:pointer;opacity:0;transition:opacity 0.3s; margin-top: 10px;}
+.reset:hover{background:#fdf2f6;}
 .reset.vis{opacity:1;}
+
+/* --- Time Together Counter Card --- */
+.counter-card {
+  width: 340px;
+  background: var(--color-background-primary, #ffffff);
+  border: 2px solid #F0BDD0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-align: center;
+  margin-top: 15px;
+  z-index: 5;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.counter-title {
+  font-family: 'Velmora Signature', cursive, sans-serif;
+  font-size: 38px;
+  color: #9A4E68;
+  margin-bottom: 4px;
+}
+
+.counter-text {
+  font-family: 'Alexis Marie', sans-serif;
+  font-size: 18px;
+  color: #9A4E68;
+  line-height: 1.4;
+}
 </style>
 
 <div class="scene">
@@ -182,11 +209,37 @@
       <span id="msgText"></span>
     </div>
     
-    <button class="reset"   id="resetBtn" onclick="resetGift()">open again</button>
+    <button class="reset" id="resetBtn" onclick="resetGift()">open again</button>
+
+    <div class="counter-card">
+      <div class="counter-title">Time Together</div>
+      <div class="counter-text" id="counterText">calculating...</div>
+    </div>
+
   </div>
 </div>
 
 <script>
+// --- Timer Logic ---
+function updateCounter() {
+  const startDate = new Date("April 19, 2023 00:00:00").getTime();
+  const now = new Date().getTime();
+  const diff = now - startDate;
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  document.getElementById("counterText").innerHTML = 
+    `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+}
+// Start timer immediately and update every 1 second
+setInterval(updateCounter, 1000);
+updateCounter();
+
+
+// --- Box Logic ---
 const rarityData = {
   "One of a kind": {
     color: "#ff007f", 
@@ -409,76 +462,4 @@ function openPaper() {
 
       const tierName = pEl.dataset.savedTier;
       
-      const label = document.getElementById('rarityLabel'); 
-      label.textContent = `• ${tierName} •`;
-      label.style.color = rarityData[tierName].color;
-      document.getElementById('msgText').textContent = pEl.dataset.savedMessage;
-
-      const card = document.getElementById('msgCard');
-      card.style.display = 'block';
-      requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('vis')));
-    };
-
-    papersRow.appendChild(pEl);
-    spawnedPapers.push(pEl);
-  }
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      spawnedPapers.forEach(p => {
-        p.style.transform = 'translateX(0) scale(1)';
-        p.style.opacity = '1';
-      });
-    });
-  });
-
-  document.getElementById('hint').textContent = 'pick a paper to read its secrets!';
-  
-  const btn = document.getElementById('resetBtn');
-  btn.style.display = 'inline-block';
-  setTimeout(() => btn.classList.add('vis'), 50);
-}
-
-function resetGift() {
-  const col = document.getElementById('col');
-  col.style.transform = 'translateX(-620px)';
-  col.style.opacity = '0';
-
-  setTimeout(() => {
-    col.style.transition = 'none';
-    col.style.transform = 'translateX(620px)';
-    col.style.opacity = '0';
-    state = 'closed';
-    preRolledPapers = [];
-
-    const lid = document.getElementById('lid');
-    lid.style.transform = '';
-
-    const paper = document.getElementById('paper');
-    paper.style.transform = '';
-    paper.style.opacity = '';
-    paper.style.pointerEvents = ''; 
-    paper.classList.remove('vis');
-
-    const papersRow = document.getElementById('papersRow');
-    papersRow.style.display = 'none';
-    papersRow.innerHTML = '';
-
-    const card = document.getElementById('msgCard');
-    card.classList.remove('vis');
-    card.style.display = 'none';
-
-    const btn = document.getElementById('resetBtn');
-    btn.classList.remove('vis');
-    btn.style.display = 'none';
-
-    document.getElementById('hint').textContent = 'click the gift to open it';
-
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      col.style.transition = '';
-      col.style.opacity = '1';
-      col.style.transform = '';
-    }));
-  }, 540);
-}
-</script>
+      const label = document.getElementB
