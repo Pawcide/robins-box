@@ -220,29 +220,33 @@
 </div>
 
 <script>
-// --- Timer Logic ---
+// --- BULLETPROOF TIMER LOGIC ---
+// Using integers (Year, Month Index 0-11, Day). Month 3 = April.
+// This is 100% immune to all iOS and Safari date parsing bugs.
+const startDate = new Date(2023, 3, 19, 0, 0, 0).getTime();
+
 function updateCounter() {
-  const counterEl = document.getElementById("counterText");
-  if (!counterEl) return; // Prevent crashes if the element isn't ready yet!
+  try {
+    const counterEl = document.getElementById("counterText");
+    if (!counterEl) return; 
 
-  // Using ISO format (YYYY-MM-DDTHH:MM:SS) ensures Safari/Apple devices don't break
-  const startDate = new Date("2023-04-19T00:00:00").getTime();
-  const now = new Date().getTime();
-  const diff = now - startDate;
+    const now = new Date().getTime();
+    const diff = now - startDate;
 
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-  counterEl.innerHTML = `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+    counterEl.innerHTML = `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+  } catch(error) {
+    console.error("Timer failed:", error);
+  }
 }
 
-// Wait for the entire page to finish loading before trying to calculate the time!
-window.addEventListener('DOMContentLoaded', () => {
-  setInterval(updateCounter, 1000);
-  updateCounter();
-});
+// Call instantly since the script is at the bottom of the HTML
+setInterval(updateCounter, 1000);
+updateCounter();
 
 
 // --- Box Logic ---
@@ -330,20 +334,22 @@ let state = 'closed';
 let preRolledPapers = []; 
 
 function shootConfetti(hasLegendaryUp) {
-  const region = document.querySelector('.gift-region');
-  const colors = ['ConfettiRed.png', 'ConfettiGreen.png', 'ConfettiBlue.png', 'ConfettiYellow.png'];
-  
-  const regularCount = 45;
-  for (let i = 0; i < regularCount; i++) {
-    createParticle(region, colors[Math.floor(Math.random() * colors.length)], 'confetti');
-  }
-
-  if (hasLegendaryUp) {
-    const starCount = 60; 
-    for (let i = 0; i < starCount; i++) {
-      createParticle(region, 'Star.png', 'star');
+  try {
+    const region = document.querySelector('.gift-region');
+    const colors = ['ConfettiRed.png', 'ConfettiGreen.png', 'ConfettiBlue.png', 'ConfettiYellow.png'];
+    
+    const regularCount = 45;
+    for (let i = 0; i < regularCount; i++) {
+      createParticle(region, colors[Math.floor(Math.random() * colors.length)], 'confetti');
     }
-  }
+
+    if (hasLegendaryUp) {
+      const starCount = 60; 
+      for (let i = 0; i < starCount; i++) {
+        createParticle(region, 'Star.png', 'star');
+      }
+    }
+  } catch(e) { console.error("Confetti error:", e); }
 }
 
 function createParticle(parentRegion, spriteName, className) {
@@ -385,46 +391,48 @@ function createParticle(parentRegion, spriteName, className) {
 }
 
 function openLid() {
-  if (state !== 'closed') return;
-  state = 'open';
-  const lid = document.getElementById('lid');
-  
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  const randomAngle = direction * (15 + Math.random() * 20);
-  
-  lid.style.transform = `translateY(800px) rotate(${randomAngle}deg)`;
-  
-  preRolledPapers = [];
-  let hasLegendaryUp = false;
-
-  for (let i = 0; i < 5; i++) {
-    const roll = Math.random() * 100;
-    let tier = "Common";
+  try {
+    if (state !== 'closed') return;
+    state = 'open';
+    const lid = document.getElementById('lid');
     
-    if (roll < 0.0001) tier = "One of a kind";
-    else if (roll < 0.0101) tier = "Exotic";
-    else if (roll < 1.0101) tier = "Legendary";
-    else if (roll < 6.0101) tier = "Epic";
-    else if (roll < 21.0101) tier = "Rare";
-    else if (roll < 61.0101) tier = "Uncommon";
-    else tier = "Common";
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    const randomAngle = direction * (15 + Math.random() * 20);
+    
+    lid.style.transform = `translateY(800px) rotate(${randomAngle}deg)`;
+    
+    preRolledPapers = [];
+    let hasLegendaryUp = false;
 
-    if (tier === "Legendary" || tier === "Exotic" || tier === "One of a kind") {
-      hasLegendaryUp = true;
+    for (let i = 0; i < 5; i++) {
+      const roll = Math.random() * 100;
+      let tier = "Common";
+      
+      if (roll < 0.0001) tier = "One of a kind";
+      else if (roll < 0.0101) tier = "Exotic";
+      else if (roll < 1.0101) tier = "Legendary";
+      else if (roll < 6.0101) tier = "Epic";
+      else if (roll < 21.0101) tier = "Rare";
+      else if (roll < 61.0101) tier = "Uncommon";
+      else tier = "Common";
+
+      if (tier === "Legendary" || tier === "Exotic" || tier === "One of a kind") {
+        hasLegendaryUp = true;
+      }
+
+      const pool = rarityData[tier].messages;
+      const chosenMessage = pool[Math.floor(Math.random() * pool.length)];
+      
+      preRolledPapers.push({ tier: tier, message: chosenMessage });
     }
 
-    const pool = rarityData[tier].messages;
-    const chosenMessage = pool[Math.floor(Math.random() * pool.length)];
+    shootConfetti(hasLegendaryUp); 
     
-    preRolledPapers.push({ tier: tier, message: chosenMessage });
-  }
-
-  shootConfetti(hasLegendaryUp); 
-  
-  setTimeout(() => {
-    document.getElementById('paper').classList.add('vis');
-    document.getElementById('hint').textContent = 'now click the paper!';
-  }, 200);
+    setTimeout(() => {
+      document.getElementById('paper').classList.add('vis');
+      document.getElementById('hint').textContent = 'now click the paper!';
+    }, 200);
+  } catch(e) { console.error("Box error:", e); }
 }
 
 function openPaper() {
@@ -461,4 +469,83 @@ function openPaper() {
     pEl.dataset.savedTier = tier; 
 
     pEl.onclick = function() {
-      if
+      if (pEl.classList.contains('expanded')) return;
+
+      document.querySelectorAll('.spawned-paper').forEach(el => el.classList.remove('expanded'));
+      pEl.classList.add('expanded');
+
+      const tierName = pEl.dataset.savedTier;
+      
+      const label = document.getElementById('rarityLabel'); 
+      label.textContent = `• ${tierName} •`;
+      label.style.color = rarityData[tierName].color;
+      document.getElementById('msgText').textContent = pEl.dataset.savedMessage;
+
+      const card = document.getElementById('msgCard');
+      card.style.display = 'block';
+      requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('vis')));
+    };
+
+    papersRow.appendChild(pEl);
+    spawnedPapers.push(pEl);
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      spawnedPapers.forEach(p => {
+        p.style.transform = 'translateX(0) scale(1)';
+        p.style.opacity = '1';
+      });
+    });
+  });
+
+  document.getElementById('hint').textContent = 'pick a paper to read its secrets!';
+  
+  const btn = document.getElementById('resetBtn');
+  btn.style.display = 'inline-block';
+  setTimeout(() => btn.classList.add('vis'), 50);
+}
+
+function resetGift() {
+  const col = document.getElementById('col');
+  col.style.transform = 'translateX(-620px)';
+  col.style.opacity = '0';
+
+  setTimeout(() => {
+    col.style.transition = 'none';
+    col.style.transform = 'translateX(620px)';
+    col.style.opacity = '0';
+    state = 'closed';
+    preRolledPapers = [];
+
+    const lid = document.getElementById('lid');
+    lid.style.transform = '';
+
+    const paper = document.getElementById('paper');
+    paper.style.transform = '';
+    paper.style.opacity = '';
+    paper.style.pointerEvents = ''; 
+    paper.classList.remove('vis');
+
+    const papersRow = document.getElementById('papersRow');
+    papersRow.style.display = 'none';
+    papersRow.innerHTML = '';
+
+    const card = document.getElementById('msgCard');
+    card.classList.remove('vis');
+    card.style.display = 'none';
+
+    const btn = document.getElementById('resetBtn');
+    btn.classList.remove('vis');
+    btn.style.display = 'none';
+
+    document.getElementById('hint').textContent = 'click the gift to open it';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      col.style.transition = '';
+      col.style.opacity = '1';
+      col.style.transform = '';
+    }));
+  }, 540);
+}
+</script>
