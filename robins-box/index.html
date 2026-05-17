@@ -222,7 +222,11 @@
 <script>
 // --- Timer Logic ---
 function updateCounter() {
-  const startDate = new Date("April 19, 2023 00:00:00").getTime();
+  const counterEl = document.getElementById("counterText");
+  if (!counterEl) return; // Prevent crashes if the element isn't ready yet!
+
+  // Using ISO format (YYYY-MM-DDTHH:MM:SS) ensures Safari/Apple devices don't break
+  const startDate = new Date("2023-04-19T00:00:00").getTime();
   const now = new Date().getTime();
   const diff = now - startDate;
 
@@ -231,12 +235,14 @@ function updateCounter() {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-  document.getElementById("counterText").innerHTML = 
-    `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+  counterEl.innerHTML = `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
 }
-// Start timer immediately and update every 1 second
-setInterval(updateCounter, 1000);
-updateCounter();
+
+// Wait for the entire page to finish loading before trying to calculate the time!
+window.addEventListener('DOMContentLoaded', () => {
+  setInterval(updateCounter, 1000);
+  updateCounter();
+});
 
 
 // --- Box Logic ---
@@ -455,11 +461,4 @@ function openPaper() {
     pEl.dataset.savedTier = tier; 
 
     pEl.onclick = function() {
-      if (pEl.classList.contains('expanded')) return;
-
-      document.querySelectorAll('.spawned-paper').forEach(el => el.classList.remove('expanded'));
-      pEl.classList.add('expanded');
-
-      const tierName = pEl.dataset.savedTier;
-      
-      const label = document.getElementB
+      if
