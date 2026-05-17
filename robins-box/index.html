@@ -161,7 +161,7 @@
 .reset:hover{background:#fdf2f6;}
 .reset.vis{opacity:1;}
 
-/* --- Base Panel Cards System (Counter & Collection) --- */
+/* --- Base Panel Cards System --- */
 .panel-card {
   width: 340px;
   background: var(--color-background-primary, #ffffff);
@@ -229,7 +229,6 @@
   background-color: #fffbfd;
 }
 
-/* Custom Scrollbar for Inventory Grid */
 .collection-grid::-webkit-scrollbar { width: 6px; }
 .collection-grid::-webkit-scrollbar-track { background: transparent; }
 .collection-grid::-webkit-scrollbar-thumb { background: #F0BDD0; border-radius: 4px; }
@@ -292,7 +291,7 @@
           <option value="Uncommon">Uncommon</option>
           <option value="Common">Common</option>
         </select>
-        <div id="collectionProgressText" class="collection-progress">0/0</div>
+        <div id="collectionProgressText" class="collection-progress">Total 0/0</div>
       </div>
       <div id="collectionGrid" class="collection-grid"></div>
     </div>
@@ -301,39 +300,15 @@
 </div>
 
 <script>
-// --- Timer Logic ---
+// --- Core Safe Constants ---
 const startDate = new Date(2023, 3, 19, 0, 0, 0).getTime();
 
-function updateCounter() {
-  try {
-    const counterEl = document.getElementById("counterText");
-    if (!counterEl) return; 
-
-    const now = new Date().getTime();
-    const diff = now - startDate;
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-    counterEl.innerHTML = `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
-  } catch(error) {
-    console.error("Timer failed:", error);
-  }
-}
-
-setInterval(updateCounter, 1000);
-updateCounter();
-
-
-// --- Box & Card Data Arrays ---
 const rarityData = {
   "One of a kind": {
     color: "#ff007f", 
     image: "RandomPaperOneOfAKind.png",
     messages: [
-      "Love isn't grand decorations or poetry, love letters, flowers or loving websites, but the quiet thought that I will come home to my mommy. You have become my mommy, and I am forever grateful for that. Even though now we are most definitely together, you didn't arrive with a bang. It was a quiet and progressive obsession where both of us fell for eachother. In a world where sometimes feelings aren't mutual, you shine the light of progress. You make feel more myself somehow, and you're the person who I always want to be surrounded by. If love isn't what we have, then everything else losses what makes something special, as you're so important to me that I need you more than I need myself. I don't need food or water if someone gave me a choice to keep one aspect of the universe the same. I'd choose you as my mommy for ever, and I would never for any circumstances switch the play and not feel special when I am with you, I love you so much my mommy, and I want you to know that you're worth every minute spend making this project, I adore you mwah meow"
+      "Love isn't grand decorations or poetry, love letters, flowers or loving websites, but the quiet thought that I will come home to my mommy. You have become my mommy, and I am forever grateful for that. Even though now we are most definitely together, you didn't arrive with a bang. It was a quiet and progressive obsession where both of us fell for eachother. In a world where sometimes feelings aren't mutual, you shine the light of progress. You make me feel more myself somehow, and you're the person who I always want to be surrounded by. If love isn't what we have, then everything else losses what makes something special, as you're so important to me that I need you more than I need myself. I don't need food or water if someone gave me a choice to keep one aspect of the universe the same. I'd choose you as my mommy for ever, and I would never for any circumstances switch the play and not feel special when I am with you, I love you so much my mommy, and I want you to know that you're worth every minute spend making this project, I adore you mwah meow"
     ]
   },
   "Exotic": {
@@ -410,54 +385,392 @@ const rarityData = {
 
 let state = 'closed';
 let preRolledPapers = []; 
+let currentBinder = {};
 
-// --- LOCAL STORAGE INVENTORY ARCHITECTURE ---
-// Retrieves her existing binder or configures a fresh object structure.
-let currentBinder = JSON.parse(localStorage.getItem('robins_gift_binder')) || {};
+// --- Armored Local Storage Safe Architecture ---
+try {
+  const saved = localStorage.getItem('robins_gift_binder');
+  if (saved) {
+    currentBinder = JSON.parse(saved);
+  }
+} catch (e) {
+  console.error("Old corrupt test structure wiped safely:", e);
+}
+
+// Force structural safety check (Must be an object and not an array/null)
+if (!currentBinder || typeof currentBinder !== 'object' || Array.isArray(currentBinder)) {
+  currentBinder = {};
+}
+
+// Strict enforcement loop ensuring every rarity tier is initialized perfectly as an array
 Object.keys(rarityData).forEach(tier => {
-  if (!currentBinder[tier]) currentBinder[tier] = [];
+  if (!Array.isArray(currentBinder[tier])) {
+    currentBinder[tier] = [];
+  }
 });
 
 function saveCardToBinder(tier, messageText) {
-  const messagePool = rarityData[tier].messages;
-  const indexPosition = messagePool.indexOf(messageText);
-  
-  if (indexPosition !== -1 && !currentBinder[tier].includes(indexPosition)) {
-    currentBinder[tier].push(indexPosition);
-    // Sort array indices logically so cards stay sequentially aligned in UI layout
-    currentBinder[tier].sort((a, b) => a - b); 
-    localStorage.setItem('robins_gift_binder', JSON.stringify(currentBinder));
-    updateCollectionGrid();
+  try {
+    if (!rarityData[tier] || !Array.isArray(currentBinder[tier])) return;
+    const messagePool = rarityData[tier].messages;
+    const indexPosition = messagePool.indexOf(messageText);
+    
+    if (indexPosition !== -1 && !currentBinder[tier].includes(indexPosition)) {
+      currentBinder[tier].push(indexPosition);
+      currentBinder[tier].sort((a, b) => a - b); 
+      localStorage.setItem('robins_gift_binder', JSON.stringify(currentBinder));
+      updateCollectionGrid();
+    }
+  } catch(e) {
+    console.error("Failed to append inventory save state:", e);
   }
 }
 
 function updateCollectionGrid() {
-  const activeFilter = document.getElementById('rarityFilter').value;
+  try {
+    const filterEl = document.getElementById('rarityFilter');
+    const gridEl = document.getElementById('collectionGrid');
+    const progressTextEl = document.getElementById('collectionProgressText');
+    
+    if (!filterEl || !gridEl || !progressTextEl) return;
+    
+    const activeFilter = filterEl.value;
+    gridEl.innerHTML = '';
+    
+    let binderCollectedCount = 0;
+    let binderTotalCapacity = 0;
+    
+    Object.keys(rarityData).forEach(tier => {
+      if (Array.isArray(currentBinder[tier])) {
+        binderCollectedCount += currentBinder[tier].length;
+      }
+      binderTotalCapacity += rarityData[tier].messages.length;
+    });
+
+    if (activeFilter === 'All') {
+      progressTextEl.textContent = `Total ${binderCollectedCount}/${binderTotalCapacity}`;
+      Object.keys(rarityData).forEach(tier => {
+        if (Array.isArray(currentBinder[tier])) {
+          currentBinder[tier].forEach(indexVal => {
+            createGridItem(tier, indexVal);
+          });
+        }
+      });
+    } else {
+      const tierCollected = Array.isArray(currentBinder[activeFilter]) ? currentBinder[activeFilter].length : 0;
+      const tierTotal = rarityData[activeFilter].messages.length;
+      progressTextEl.textContent = `${activeFilter.toLowerCase()} ${tierCollected}/${tierTotal}`;
+      
+      if (Array.isArray(currentBinder[activeFilter])) {
+                currentBinder[activeFilter].forEach(indexVal => {
+          createGridItem(activeFilter, indexVal);
+        });
+      }
+    }
+  } catch(e) {
+    console.error("UI Render engine error caught safely:", e);
+  }
+}
+
+function createGridItem(tier, indexVal) {
   const gridEl = document.getElementById('collectionGrid');
-  const progressTextEl = document.getElementById('collectionProgressText');
+  if (!gridEl) return;
+
+  const itemTile = document.createElement('div');
+  itemTile.className = 'unlocked-item';
+  itemTile.style.backgroundImage = `url('${rarityData[tier].image}')`;
+  itemTile.title = `Click to re-read this ${tier} card!`;
   
-  gridEl.innerHTML = '';
+  itemTile.onclick = function() {
+    const label = document.getElementById('rarityLabel'); 
+    if (label) {
+      label.textContent = `• ${tier} •`;
+      label.style.color = rarityData[tier].color;
+    }
+    const txtEl = document.getElementById('msgText');
+    if (txtEl) txtEl.textContent = rarityData[tier].messages[indexVal];
+
+    const card = document.getElementById('msgCard');
+    if (card) {
+      card.style.display = 'block';
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('vis')));
+    }
+  };
   
-  let binderCollectedCount = 0;
-  let binderTotalCapacity = 0;
+  gridEl.appendChild(itemTile);
+}
+
+function updateCounter() {
+  try {
+    const counterEl = document.getElementById("counterText");
+    if (!counterEl) return; 
+
+    const now = new Date().getTime();
+    const diff = now - startDate;
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    counterEl.innerHTML = `${days} days<br>${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+  } catch(error) {
+    console.error("Timer engine error caught safely:", error);
+  }
+}
+
+
+// --- Box UI Open/Close Mechanics ---
+function shootConfetti(hasLegendaryUp) {
+  try {
+    const region = document.querySelector('.gift-region');
+    if (!region) return;
+    const colors = ['ConfettiRed.png', 'ConfettiGreen.png', 'ConfettiBlue.png', 'ConfettiYellow.png'];
+    
+    for (let i = 0; i < 45; i++) {
+      createParticle(region, colors[Math.floor(Math.random() * colors.length)], 'confetti');
+    }
+    if (hasLegendaryUp) {
+      for (let i = 0; i < 60; i++) {
+        createParticle(region, 'Star.png', 'star');
+      }
+    }
+  } catch(e) { console.error("Confetti system error:", e); }
+}
+
+function createParticle(parentRegion, spriteName, className) {
+  const p = document.createElement('div');
+  p.className = className;
+  p.style.backgroundImage = `url('${spriteName}')`;
+  parentRegion.appendChild(p);
+
+  const duration = 1.6 + Math.random() * 0.7; 
+  const fps = 30; 
+  const totalFrames = Math.floor(duration * fps);
   
-  Object.keys(rarityData).forEach(tier => {
-    binderCollectedCount += currentBinder[tier].length;
-    binderTotalCapacity += rarityData[tier].messages.length;
+  const vx = (Math.random() - 0.5) * 360; 
+  const vy = -(Math.random() * 300 + 320); 
+  const gravity = 850; 
+  const rotSpeed = (Math.random() - 0.5) * 550; 
+
+  const keyframes = [];
+  for (let f = 0; f <= totalFrames; f++) {
+    const t = f / fps;
+    const dx = vx * t;
+    const dy = (vy * t) + (0.5 * gravity * t * t);
+    const rZ = rotSpeed * t;
+    const opacityFade = t > (duration - 0.4) ? 1 - ((t - (duration - 0.4)) * 2.5) : 1;
+
+    keyframes.push({
+      transform: `translate(${dx}px, ${dy}px) rotate(${rZ}deg)`,
+      opacity: Math.max(0, opacityFade)
+    });
+  }
+
+  p.animate(keyframes, {
+    duration: duration * 1000,
+    easing: 'linear',
+    fill: 'forwards'
   });
 
-  if (activeFilter === 'All') {
-    progressTextEl.textContent = `Total ${binderCollectedCount}/${binderTotalCapacity}`;
+  setTimeout(() => p.remove(), duration * 1000);
+}
+
+function openLid() {
+  try {
+    if (state !== 'closed') return;
+    state = 'open';
+    const lid = document.getElementById('lid');
+    if (!lid) return;
     
-    // Mount all currently unlocked inventory spaces into viewport array
-    Object.keys(rarityData).forEach(tier => {
-      currentBinder[tier].forEach(indexVal => {
-        createGridItem(tier, indexVal);
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    const randomAngle = direction * (15 + Math.random() * 20);
+    
+    lid.style.transform = `translateY(800px) rotate(${randomAngle}deg)`;
+    
+    preRolledPapers = [];
+    let hasLegendaryUp = false;
+
+    for (let i = 0; i < 5; i++) {
+      const roll = Math.random() * 100;
+      let tier = "Common";
+      
+      if (roll < 0.0001) tier = "One of a kind";
+      else if (roll < 0.0101) tier = "Exotic";
+      else if (roll < 1.0101) tier = "Legendary";
+      else if (roll < 6.0101) tier = "Epic";
+      else if (roll < 21.0101) tier = "Rare";
+      else if (roll < 61.0101) tier = "Uncommon";
+      else tier = "Common";
+
+      if (tier === "Legendary" || tier === "Exotic" || tier === "One of a kind") {
+        hasLegendaryUp = true;
+      }
+
+      const pool = rarityData[tier].messages;
+      const chosenMessage = pool[Math.floor(Math.random() * pool.length)];
+      
+      preRolledPapers.push({ tier: tier, message: chosenMessage });
+    }
+
+    shootConfetti(hasLegendaryUp); 
+    
+    setTimeout(() => {
+      const pEl = document.getElementById('paper');
+      if (pEl) pEl.classList.add('vis');
+      const hEl = document.getElementById('hint');
+      if (hEl) hEl.textContent = 'now click the paper!';
+    }, 200);
+  } catch(e) { console.error("Critical opening system exception caught:", e); }
+}
+
+function openPaper() {
+  if (state !== 'open') return;
+  state = 'read';
+  
+  const paper = document.getElementById('paper');
+  if (paper) {
+    paper.style.transform = 'scale(0)';
+    paper.style.opacity = '0';
+    paper.style.pointerEvents = 'none';
+  }
+
+  const papersRow = document.getElementById('papersRow');
+  if (!papersRow) return;
+  papersRow.innerHTML = ''; 
+  papersRow.style.display = 'flex';
+
+  const paperWidth = 192;
+  const gapSize = 16;
+  const spawnedPapers = [];
+
+  for (let i = 0; i < 5; i++) {
+    const rolledItem = preRolledPapers[i];
+    const tier = rolledItem.tier;
+
+    const pEl = document.createElement('div');
+    pEl.className = 'spawned-paper';
+    pEl.style.backgroundImage = `url('${rarityData[tier].image}')`;
+    
+    const finalOffsetFromCenter = (i - 2) * (paperWidth + gapSize);
+    pEl.style.transform = `translateX(${-finalOffsetFromCenter}px) scale(0.2)`;
+    pEl.style.opacity = '0';
+    pEl.style.transition = 'transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease';
+    
+    pEl.dataset.savedMessage = rolledItem.message; 
+    pEl.dataset.savedTier = tier; 
+
+    pEl.onclick = function() {
+      if (pEl.classList.contains('expanded')) return;
+
+      document.querySelectorAll('.spawned-paper').forEach(el => el.classList.remove('expanded'));
+      pEl.classList.add('expanded');
+
+      const tierName = pEl.dataset.savedTier;
+      const activeMessage = pEl.dataset.savedMessage;
+      
+      const label = document.getElementById('rarityLabel'); 
+      if (label) {
+        label.textContent = `• ${tierName} •`;
+        label.style.color = rarityData[tierName].color;
+      }
+      const txtEl = document.getElementById('msgText');
+      if (txtEl) txtEl.textContent = activeMessage;
+
+      saveCardToBinder(tierName, activeMessage);
+
+      const card = document.getElementById('msgCard');
+      if (card) {
+        card.style.display = 'block';
+        requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add('vis')));
+      }
+    };
+
+    papersRow.appendChild(pEl);
+    spawnedPapers.push(pEl);
+  }
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      spawnedPapers.forEach(p => {
+        p.style.transform = 'translateX(0) scale(1)';
+        p.style.opacity = '1';
       });
     });
-  } else {
-    const tierCollected = currentBinder[activeFilter].length;
-    const tierTotal = rarityData[activeFilter].messages.length;
-    progressTextEl.textContent = `${activeFilter.toLowerCase()} ${tierCollected}/${tierTotal}`;
-    
-    currentBinder
+  });
+
+  const hEl = document.getElementById('hint');
+  if (hEl) hEl.textContent = 'pick a paper to read its secrets!';
+  
+  const btn = document.getElementById('resetBtn');
+  if (btn) {
+    btn.style.display = 'inline-block';
+    setTimeout(() => btn.classList.add('vis'), 50);
+  }
+}
+
+function resetGift() {
+  const col = document.getElementById('col');
+  if (!col) return;
+  col.style.transform = 'translateX(-620px)';
+  col.style.opacity = '0';
+
+  setTimeout(() => {
+    col.style.transition = 'none';
+    col.style.transform = 'translateX(620px)';
+    col.style.opacity = '0';
+    state = 'closed';
+    preRolledPapers = [];
+
+    const lid = document.getElementById('lid');
+    if (lid) lid.style.transform = '';
+
+    const paper = document.getElementById('paper');
+    if (paper) {
+      paper.style.transform = '';
+      paper.style.opacity = '';
+      paper.style.pointerEvents = ''; 
+      paper.classList.remove('vis');
+    }
+
+    const papersRow = document.getElementById('papersRow');
+    if (papersRow) {
+      papersRow.style.display = 'none';
+      papersRow.innerHTML = '';
+    }
+
+    const card = document.getElementById('msgCard');
+    if (card) {
+      card.classList.remove('vis');
+      card.style.display = 'none';
+    }
+
+    const btn = document.getElementById('resetBtn');
+    if (btn) {
+      btn.classList.remove('vis');
+      btn.style.display = 'none';
+    }
+
+    const hEl = document.getElementById('hint');
+    if (hEl) hEl.textContent = 'click the gift to open it';
+
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      col.style.transition = '';
+      col.style.opacity = '1';
+      col.style.transform = '';
+    }));
+  }, 540);
+}
+
+// --- Defensively Sequenced Core Runtime Initializer ---
+try {
+  updateCounter();
+  setInterval(updateCounter, 1000);
+  updateCollectionGrid();
+} catch(e) {
+  console.error("Global operational pipeline initialization caught an anomaly safely:", e);
+}
+</script>
+</body>
+</html>
